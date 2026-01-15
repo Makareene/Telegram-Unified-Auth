@@ -36,10 +36,10 @@ Updates may only be released **if Telegram changes its authentication mechanism*
 
 ## File Structure
 
-index.php   # Main entry point, login UI and session state
-webapp.php  # Mini App auto-auth handler
-auth.php    # TelegramUnifiedAuth class
-logout.php  # Session logout
+- index.php   # Main entry point, login UI and session state
+- webapp.php  # Mini App auto-auth handler
+- auth.php    # TelegramUnifiedAuth class
+- logout.php  # Session logout
 
 ---
 
