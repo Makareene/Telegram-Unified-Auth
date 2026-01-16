@@ -184,4 +184,8 @@ See the `LICENSE` file for details.
 **Nipaa**  
 GitHub: https://github.com/Makareene
 
+## Telegram documentation
+https://core.telegram.org/widgets/login
+https://core.telegram.org/bots/webapps
+
 This repository is intentionally simple and readable, making it suitable for audits and learning purposes.
