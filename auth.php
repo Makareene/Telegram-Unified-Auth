@@ -31,7 +31,7 @@ class TelegramUnifiedAuth {
    *
    * @var string
    */
-  private string $token = 'PUT_YOUR_TG_TOKEN';
+  protected string $token = 'PUT_YOUR_TG_TOKEN';
 
   /**
    * Cached Telegram source detection result
@@ -48,7 +48,7 @@ class TelegramUnifiedAuth {
    *
    * @var bool|null
    */
-  private ?bool $is_miniapp = null;
+  protected ?bool $is_miniapp = null;
 
   /**
    * Normalized Telegram authentication payload
@@ -66,7 +66,7 @@ class TelegramUnifiedAuth {
    *
    * @var array|null
    */
-  private ?array $data = null;
+  protected ?array $data = null;
 
   /**
    * Constructor
@@ -92,7 +92,7 @@ class TelegramUnifiedAuth {
    * @param array $data Incoming Telegram data
    * @return bool
    */
-  private function is_miniapp(array $data): bool {
+  protected function is_miniapp(array $data): bool {
     if (!is_null($this->is_miniapp)) return $this->is_miniapp;
 
     if (!empty($data['id'])) return $this->is_miniapp = false;
@@ -111,7 +111,7 @@ class TelegramUnifiedAuth {
    * @param array|string $data
    * @return void
    */
-  private function to_array(array|string &$data): void {
+  protected function to_array(array|string &$data): void {
     if (is_string($data)) {
       parse_str($data, $data);
     }
