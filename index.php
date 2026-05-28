@@ -26,8 +26,9 @@ session_start();
       $.post('/webapp.php', { user: user })
         .done(() => location.reload())
         .fail(xhr => {
-            $('body').html(
-              '<h3>Authentication error</h3><pre>' + xhr.responseText + '</pre>'
+            $('body').empty().append(
+              $('<h3>').text('Authentication error'),
+              $('<pre>').text(xhr.responseText)
             );
         });
   }

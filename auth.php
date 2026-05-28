@@ -34,6 +34,41 @@ class TelegramUnifiedAuth {
   private string $token = 'PUT_YOUR_TG_TOKEN';
 
   /**
+   * Cached Telegram source detection result
+   *
+   * Stores whether the current authentication payload
+   * originates from a Telegram Mini App.
+   *
+   * Values:
+   *  - null  → source not detected yet
+   *  - true  → Telegram Mini App (WebApp)
+   *  - false → Telegram Login Widget
+   *
+   * Used to avoid repeated source detection.
+   *
+   * @var bool|null
+   */
+  private ?bool $is_miniapp = null;
+
+  /**
+   * Normalized Telegram authentication payload
+   *
+   * Stores the last processed Telegram authentication
+   * data after normalization (query string → array).
+   *
+   * Used by:
+   *  - signature validation
+   *  - user data extraction
+   *  - source detection
+   *
+   * Contains widget or Mini App payload depending
+   * on the authentication source.
+   *
+   * @var array|null
+   */
+  private ?array $data = null;
+
+  /**
    * Constructor
    *
    * Allows setting the Telegram Bot token dynamically.
@@ -58,11 +93,13 @@ class TelegramUnifiedAuth {
    * @return bool
    */
   private function is_miniapp(array $data): bool {
-    if (!empty($data['id'])) return false;
-    if (empty($data['user']) || !is_string($data['user'])) return false;
+    if (!is_null($this->is_miniapp)) return $this->is_miniapp;
+
+    if (!empty($data['id'])) return $this->is_miniapp = false;
+    if (empty($data['user']) || !is_string($data['user'])) return $this->is_miniapp = false;
 
     $user = json_decode($data['user'], true);
-    return is_array($user) && isset($user['id']);
+    return $this->is_miniapp = is_array($user) && isset($user['id']);
   }
 
   /**
@@ -99,39 +136,47 @@ class TelegramUnifiedAuth {
   function check(array|string $data): int|bool {
     $this->to_array($data);
 
+    $this->data = $data;
+
     // Required fields
-    if (empty($data['hash']) || empty($data['auth_date'])) {
+    if (empty($this->data['hash']) || empty($this->data['auth_date'])) {
+      $this->data = null;
       return false;
     }
 
     // Expiration check (5 minutes)
-    if (time() - (int)$data['auth_date'] > 300) {
+    if (time() - (int)$this->data['auth_date'] > 300) {
+      $this->data = null;
       return 0;
     }
 
     // Extract hash
-    $hash = $data['hash'];
-    unset($data['hash']);
+    $hash = $this->data['hash'];
+    unset($this->data['hash']);
 
     // Sort fields alphabetically
-    ksort($data);
+    ksort($this->data);
 
     // Build data-check-string
     $check_string = '';
-    foreach ($data as $key => $value) {
+    foreach ($this->data as $key => $value) {
       $check_string .= $key . '=' . $value . "\n";
     }
     $check_string = rtrim($check_string, "\n");
 
     // Generate secret key depending on source
-    $secret_key = $this->is_miniapp($data)
+    $secret_key = $this->is_miniapp($this->data)
       ? hash_hmac('sha256', $this->token, 'WebAppData', true)
       : hash('sha256', $this->token, true);
 
     // Calculate signature
     $calculated_hash = hash_hmac('sha256', $check_string, $secret_key);
 
-    return hash_equals($calculated_hash, $hash);
+    $res = hash_equals($calculated_hash, $hash);
+
+    if ($res !== true) $this->data = null;
+
+    return $res;
   }
 
   /**
@@ -140,24 +185,38 @@ class TelegramUnifiedAuth {
    * Returns unified user array regardless of
    * whether the source is a widget or mini app.
    *
-   * @param array|string $data Telegram auth data
    * @return array{id:int,first_name:string,last_name:string,username:string,photo_url:string}
    */
-  function get(array|string $data): array {
-    $this->to_array($data);
+  function get(): array|bool {
+    if (is_null($this->data)) return false;
 
     // Extract user object
-    $user = $this->is_miniapp($data)
-      ? json_decode($data['user'], true)
-      : $data;
+    $user = $this->is_miniapp($this->data)
+      ? json_decode($this->data['user'], true)
+      : $this->data;
 
-    return [
-      'id'         => isset($user['id']) ? (int)$user['id'] : 0,
-      'first_name' => $user['first_name'] ?? '',
-      'last_name'  => $user['last_name'] ?? '',
-      'username'   => $user['username'] ?? '',
-      'photo_url'  => $user['photo_url'] ?? ''
-    ];
+    return [ 'id'         => isset($user['id']) ? (int)$user['id'] : 0,
+            ,'first_name' => $user['first_name'] ?? '',
+            ,'last_name'  => $user['last_name'] ?? '',
+            ,'username'   => $user['username'] ?? '',
+            ,'photo_url'  => $user['photo_url'] ?? ''
+           ];
+  }
+
+  /**
+   * Returns detected Telegram authentication source
+   *
+   * Result reflects the cached source detection state.
+   *
+   * Return values:
+   *  - null  → source not detected yet
+   *  - true  → Telegram Mini App (WebApp)
+   *  - false → Telegram Login Widget
+   *
+   * @return bool|null
+   */
+  function is_miniapp_get(): null|bool {
+    return $this->is_miniapp;
   }
 
 }

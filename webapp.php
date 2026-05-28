@@ -30,9 +30,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit($is_check === 0 ? 'The data is expired' : 'Invalid Telegram auth');
     }
 
-    $data = $auth->get($_POST['user']);
+    $data = $auth->get();
 
-    if (empty($data['id'])) {
+    if (!$data || empty($data['id'])) {
         http_response_code(403);
         exit('Telegram ID was not found');
     }
